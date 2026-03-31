@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+文本识别工具
+"""
 import yaml
 import os
 class FileSearcher:
-    def __init__(self, config_file='config.xml'):
+    def __init__(self, config_file='config.yaml'):
         """初始化搜索器"""
         self.config_file = config_file
         self.keywords = []
-        self.directory = './'
+        self.directory = ''
         self.results = []
+        self.results_count = 0
         self.load_config()
     
     def load_config(self):
@@ -19,23 +23,21 @@ class FileSearcher:
         except Exception as e:
                 print(f"读取配置文件失败: {e}")
                 return {}
-            
+    
         # 加载关键字
-        keywords = conf['txt_recognition']['key_words']
-        if keywords:
-            for keyword in keywords.split(','):
-                if keyword:
-                    self.keywords.append(keyword.strip())
-        
+        keyword = conf['txt_recognition']['key_words']
+        if keyword:
+            self.keywords = keyword
+
         # 加载搜索目录
-        directory_elem = root.find('search/directory')
-        if directory_elem and directory_elem.text:
-            self.directory = directory_elem.text.strip()
+        directory = conf['txt_recognition']['file_path']
+        if directory:
+            self.directory = directory.strip()
         
         print(f"配置加载成功:")
         print(f"  搜索目录: {self.directory}")
-        print(f"  搜索关键字: {', '.join(self.keywords)}")
-        
+        print(f"  搜索关键字: {self.keywords}")
+        print(f"配置加载结束")
 
     
     def search_files(self):
@@ -55,6 +57,7 @@ class FileSearcher:
             for file in files:
                 if file.endswith('.txt'):
                     file_path = os.path.join(root_dir, file)
+                    # 在文件中搜索
                     self.search_in_file(file_path)
         
         self.print_results()
@@ -62,9 +65,16 @@ class FileSearcher:
     def search_in_file(self, file_path):
         """在单个文件中搜索"""
         try:
-            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+            import chardet
+            with open(file_path, 'rb') as f:
+                        raw_data = f.read()
+                        result = chardet.detect(raw_data)
+                        encoding = result['encoding'] or 'utf-8'
+                        print(f"检测到文件编码: {encoding}")
+
+            with open(file_path, 'r', encoding=encoding, errors='ignore') as f:
                 content = f.read()
-                
+                # breakpoint()
                 # 检查是否包含关键字
                 found_keywords = []
                 for keyword in self.keywords:
@@ -88,7 +98,6 @@ class FileSearcher:
         print("=" * 80)
         
         for i, result in enumerate(self.results, 1):
-            print(f"\n{i}. 文件名: {result['file_name']}")
             print(f"   路径: {result['file_path']}")
             print(f"   匹配关键字: {', '.join(result['keywords'])}")
         
